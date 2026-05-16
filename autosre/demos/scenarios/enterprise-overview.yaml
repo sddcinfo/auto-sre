@@ -1,0 +1,59 @@
+name: enterprise-overview
+description: "Enterprise AI infrastructure overview — on-premise, sovereign, cost-effective"
+audience: cxo
+total_minutes: 45
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: setup
+    duration_minutes: 5
+    description: "Environment warmup and model loading"
+    commands:
+      - "autosre start"
+      - "autosre test"
+    talking_points:
+      - "Single command to go from bare metal to AI-ready"
+      - "No cloud dependencies, no API keys, fully on-premise"
+      - "Model loads in ~30 seconds, ready to serve"
+    success_criteria:
+      - "Server healthy (autosre test passes)"
+      - "API responding at http://<node-ip>:8000"
+
+  - name: single-agent
+    duration_minutes: 10
+    description: "Single Claude Code agent demonstration"
+    commands:
+      - "autosre claude"
+    talking_points:
+      - "Full Claude Code experience, running entirely on your hardware"
+      - "Data never leaves your network"
+      - "Same developer experience as cloud, zero data exposure"
+    success_criteria:
+      - "Claude Code responds to prompts"
+      - "Tool usage works (file read/write, search)"
+
+  - name: agent-swarm
+    duration_minutes: 20
+    description: "Multi-agent team collaboration"
+    commands:
+      - "autosre claude --swarm"
+    talking_points:
+      - "Multiple AI agents working in parallel — like a team of analysts"
+      - "Team lead coordinates, teammates execute independently"
+      - "Each agent has its own context window and tool access"
+    success_criteria:
+      - "3+ agents spawned and working"
+      - "Agents complete assigned tasks"
+
+  - name: showcase
+    duration_minutes: 10
+    description: "Results review and Q&A"
+    commands: []
+    talking_points:
+      - "Review what the agents accomplished in 20 minutes"
+      - "Cost comparison: this hardware vs cloud API at scale"
+      - "Scales with your team, not your API bill"
+    success_criteria:
+      - "Audience can see completed agent work"

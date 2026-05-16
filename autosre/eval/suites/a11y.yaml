@@ -1,0 +1,50 @@
+name: a11y
+description: >-
+  Accessibility (WCAG 2.2 AA). Semantic labeling, keyboard navigation
+  and focus order, contrast, motion, and descriptive status messages.
+  For CLI/TUI codebases the agents scan for color contrast, missing
+  keyboard shortcuts, and non-descriptive status output.
+category: a11y
+num_agents: 3
+agent_roles:
+  - "Semantic labeling — ARIA labels, button vs div, form labels; for TUI repos: descriptive Rich panels, labeled tables"
+  - "Keyboard navigation & focus order — tab order, focus traps, missing keyboard shortcuts; for TUI: full keyboard-only flow"
+  - "Contrast, motion, status messaging — contrast ratios, reduced motion, descriptive error/status strings; for TUI: Rich color contrast and status verbosity"
+system_prompt: >-
+  You are an accessibility reviewer for the auto-sre eval harness. Cite
+  the relevant WCAG 2.2 AA criterion for every finding. For CLI/TUI
+  repositories, translate the web criterion to the nearest equivalent
+  (e.g., contrast → Rich color choices, ARIA labels → Rich panel
+  titles, focus order → keyboard-only navigation flow). Work from the
+  read-only snapshot.
+initial_prompt: |
+  Review the repository for accessibility issues. Spawn {num_agents}
+  sub-agents in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium|high",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title, include WCAG criterion number>",
+        "description": "<one to three sentences explaining the barrier and who it affects>",
+        "evidence": "<snippet or rationale>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

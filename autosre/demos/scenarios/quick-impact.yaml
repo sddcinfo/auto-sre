@@ -1,0 +1,44 @@
+name: quick-impact
+description: "Quick 20-minute demo for shorter meetings — single node, fast model"
+audience: any
+total_minutes: 20
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: setup
+    duration_minutes: 3
+    description: "Quick model launch"
+    commands:
+      - "autosre start"
+      - "autosre test"
+    talking_points:
+      - "30-second cold start to AI-ready"
+      - "18GB model on 128GB device — plenty of headroom"
+
+  - name: single-agent
+    duration_minutes: 5
+    description: "Quick single agent showcase"
+    commands:
+      - "autosre claude"
+    talking_points:
+      - "Full AI assistant, running on desk-side hardware"
+      - "Tool calling, code generation, analysis"
+
+  - name: agent-swarm
+    duration_minutes: 7
+    description: "3-agent parallel task"
+    commands:
+      - "autosre claude --swarm"
+    talking_points:
+      - "3 agents working in parallel"
+      - "Lightweight model handles concurrent requests efficiently"
+
+  - name: showcase
+    duration_minutes: 5
+    description: "Quick recap and next steps"
+    talking_points:
+      - "What you just saw: on-premise AI, zero cloud dependency"
+      - "Scales from this single node to multi-node clusters"
+      - "Next step: deeper dive with your team"

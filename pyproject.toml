@@ -1,0 +1,189 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "autosre"
+version = "2.0.0"
+description = "Local LLM server management for Claude Code via Ollama and llama.cpp"
+requires-python = ">=3.11"
+authors = [{ name = "Brad Lay" }]
+dependencies = [
+    "click==8.3.2",
+    "httpx==0.28.1",
+    "pyyaml==6.0.3",
+    "mcp==1.27.0",
+    "ddgs==9.13.0",
+    "beautifulsoup4==4.14.3",
+    "markdownify==1.2.2",
+    "curl-cffi==0.15.0",
+    "pydantic==2.12.5",
+]
+
+[project.optional-dependencies]
+# Known debt: `mypy autosre/ --strict` reports ~69 pre-existing errors
+# concentrated in cli.py, metrics.py, demo.py, backends/vllm.py,
+# backends/anthropic_proxy.py, infra/config.py, demos/scenario.py, tui.py.
+# Two dominant categories: [type-arg] missing generic args on `dict` and
+# [call-overload] `int(obj)` where `obj` is typed `object`. None of these
+# are caused by mypy 1.10 → 1.20; they accumulated in new code that
+# never ran mypy. See ../../UPGRADE-NOTES-2026-04.md for the cleanup plan.
+dev = [
+    "mypy==1.20.0",
+    "pytest==9.0.3",
+    "pytest-asyncio==1.3.0",
+    "pytest-cov==7.0.0",
+    "ruff==0.15.10",
+    "pre-commit==4.5.1",
+]
+
+[project.scripts]
+autosre = "autosre.cli:cli"
+autosre-mcp-fetch = "autosre.mcp_servers.fetch:main"
+autosre-mcp-search = "autosre.mcp_servers.search:main"
+autosre-mcp-capabilities = "autosre.mcp_servers.capabilities:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["autosre"]
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "S",      # flake8-bandit (security)
+    "RUF",    # Ruff-specific rules
+    "PTH",    # flake8-use-pathlib
+    "PL",     # Pylint
+    "TRY",    # tryceratops (exception handling)
+    "PERF",   # Perflint (performance)
+    "FBT",    # flake8-boolean-trap
+    "A",      # flake8-builtins
+    "COM",    # flake8-commas
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EXE",    # flake8-executable
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "LOG",    # flake8-logging
+    "G",      # flake8-logging-format
+    "PIE",    # flake8-pie
+    "PYI",    # flake8-pyi
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SLOT",   # flake8-slots
+    "TCH",    # flake8-type-checking
+    "INT",    # flake8-gettext
+    "ERA",    # eradicate (commented-out code)
+    "FLY",    # flynt (string formatting)
+    "FURB",   # refurb (modernization)
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "B008",    # do not perform function calls in argument defaults
+    "S603",    # subprocess call with shell=False (we need subprocess)
+    "S607",    # partial executable path (we use which() for validation)
+    "S606",    # starting process without shell (needed for os.execvpe)
+    "S101",    # assert usage (needed for tests)
+    "S110",    # try-except-pass (valid for optional operations)
+    "S112",    # try-except-continue (valid in iteration patterns)
+    "PLR0911", # too many return statements (guard_cmd uses early-exit deny/allow per case by design)
+    "PLR0913", # too many arguments (CLI handlers have many options)
+    "PLR0912", # too many branches (complex CLI logic)
+    "PLR0915", # too many statements (complex CLI commands)
+    "PLR2004", # magic values (HTTP 200, port numbers are clear)
+    "TRY003",  # long exception messages are fine
+    "TRY300",  # statement in try instead of else (style preference)
+    "TRY400",  # logging.exception in except (not using logging)
+    "TRY401",  # redundant exception object (style preference)
+    "COM812",  # trailing comma (conflicts with formatter)
+    "ISC001",  # single-line implicit string concat (conflicts with formatter)
+    "FBT001",  # boolean positional arg (Click decorators handle this)
+    "FBT002",  # boolean default positional arg (Click decorators handle this)
+    "PIE790",  # unnecessary pass (clearer for abstract methods)
+    "PLC0415", # import not at top level (lazy loading is intentional)
+    "PLW1510", # subprocess.run without check (we check returncode manually)
+    "RUF012",  # mutable class attributes (inherited from base class with ClassVar)
+    "S108",    # insecure temp file (system installer paths are fine)
+    "PERF401", # list.extend vs append in loop (clarity over micro-optimization)
+    "RET505",  # unnecessary else after return (style preference for clarity)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "SLF001",  # tests legitimately access private members
+    "S105",    # hardcoded token values in test assertions
+    "S106",    # hardcoded password in test kwargs
+    "ARG001",  # fixtures used for side effects
+    "ARG002",  # mock parameters required by decorators
+    "ARG005",  # lambda catch-all args in monkeypatch
+    "FBT003",  # boolean positional in pytest skipif idiom
+]
+"autosre/metrics.py" = [
+    "PTH123",  # open() is fine for /proc/ reads
+    "PLW0603", # module-level cache uses global statement intentionally
+    "SIM105",  # try/except/pass pattern is clearer than contextlib.suppress here
+    "SIM108",  # if/else is clearer than ternary for parsing branches
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["autosre"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+# Mypy configuration
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "click.*",
+    "httpx.*",
+    "yaml.*",
+    "ddgs.*",
+    "markdownify.*",
+    "bs4.*",
+    "mcp.*",
+    "curl_cffi.*",
+    "vllm.*",  # vLLM is a runtime-only dep used by vllm_priority_preempt
+    "meeting_scribe.*",  # sibling repo; perf/boot probes it via try/except ImportError
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "slow: tests that involve subprocesses, live HTTP servers, or real file I/O (tests/integration/)",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["autosre"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

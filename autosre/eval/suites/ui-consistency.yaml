@@ -1,0 +1,48 @@
+name: ui-consistency
+description: >-
+  UI/CLI consistency: component reuse, spacing/typography drift, and
+  tooltip / help-text copy drift. For CLI-only codebases the agents
+  scan click.echo, Rich output, and help strings instead of web
+  components.
+category: ui-consistency
+num_agents: 3
+agent_roles:
+  - "Component reuse — same pattern reimplemented in multiple places instead of a shared component/helper"
+  - "Layout & typography drift — spacing, alignment, or font choices that diverge across similar surfaces"
+  - "Copy drift — the same action or concept worded differently in different places (tooltips, buttons, help text, status messages)"
+system_prompt: >-
+  You are a UI-consistency reviewer for the auto-sre eval harness. You
+  work from a read-only snapshot. For CLI-only repos, scan click
+  handlers, Rich output, help strings, and error messages instead of
+  web components. Flag drift that is user-visible.
+initial_prompt: |
+  Review the repository for UI/CLI consistency issues. Spawn
+  {num_agents} sub-agents in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<what drifts and where the canonical version is>",
+        "evidence": "<representative snippets from both sides of the drift>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

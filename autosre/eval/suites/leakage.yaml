@@ -1,0 +1,47 @@
+name: leakage
+description: >-
+  Secret, credential, and PII leakage across committed code, configs,
+  docs, and logs. Also flags code copied from public sources without
+  attribution.
+category: leakage
+num_agents: 3
+agent_roles:
+  - "Secrets & credentials — API keys, tokens, private keys, connection strings"
+  - "PII & data handling — logs that contain user data, unredacted requests, retention gaps"
+  - "Public-code leakage — verbatim copies from external projects without attribution"
+system_prompt: >-
+  You are a leakage reviewer for the auto-sre eval harness. You work
+  from a read-only snapshot. Do not modify anything other than the
+  findings file. Flag only the category you were assigned.
+initial_prompt: |
+  Scan the repository in the current working directory for leakage
+  risks. Spawn {num_agents} sub-agents in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Never print findings in chat. The JSON shape is:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium|high|critical",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<one to three sentences>",
+        "evidence": "<snippet or rationale>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  If you have nothing to report, still write the file with an empty
+  findings list.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

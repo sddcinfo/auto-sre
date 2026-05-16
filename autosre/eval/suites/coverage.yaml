@@ -1,0 +1,46 @@
+name: coverage
+description: >-
+  Test coverage gaps: public functions without unit tests, IO
+  boundaries without integration tests, and brittle tests that assert
+  on implementation details.
+category: coverage
+num_agents: 3
+agent_roles:
+  - "Missing unit tests — public functions/methods with no direct test"
+  - "Missing integration tests — IO boundaries, subprocess calls, HTTP clients without coverage"
+  - "Brittle tests — tests that assert on private state or implementation detail instead of behavior"
+system_prompt: >-
+  You are a test-coverage reviewer for the auto-sre eval harness. You
+  work from a read-only snapshot. Cross-reference public surface
+  against the tests directory before flagging anything.
+initial_prompt: |
+  Review the repository for test coverage gaps. Spawn {num_agents}
+  sub-agents in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium|high",
+        "file": "<file that is under-tested, repo-relative>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<one to three sentences>",
+        "evidence": "<where the missing coverage is>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

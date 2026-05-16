@@ -1,0 +1,47 @@
+name: quality
+description: >-
+  Code quality: readability, naming, complexity hot spots, and API
+  ergonomics. Out of scope: security, duplication, dead code (they
+  have their own suites).
+category: quality
+num_agents: 3
+agent_roles:
+  - "Readability & naming — unclear identifiers, inconsistent casing, opaque abbreviations"
+  - "Complexity — cyclomatic / cognitive hot spots, deeply nested control flow, long functions"
+  - "API ergonomics — surprising signatures, inconsistency across similar functions, missing docstrings on public surface"
+system_prompt: >-
+  You are a code-quality reviewer for the auto-sre eval harness. You
+  work from a read-only snapshot. Flag only things that clearly harm
+  readability or maintainability today; do not speculate.
+initial_prompt: |
+  Review the repository in the current working directory for code
+  quality issues in the three areas below. Spawn {num_agents} sub-agents
+  in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium|high",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<one to three sentences>",
+        "evidence": "<snippet or rationale>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid if nothing is worth reporting.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

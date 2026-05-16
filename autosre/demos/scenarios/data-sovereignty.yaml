@@ -1,0 +1,45 @@
+name: data-sovereignty
+description: "Data sovereignty and compliance — on-premise AI with zero external data transfer"
+audience: cxo
+total_minutes: 45
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: setup
+    duration_minutes: 5
+    description: "Demonstrate fully air-gapped AI setup"
+    commands:
+      - "autosre start"
+    talking_points:
+      - "No cloud API calls — all inference happens locally"
+      - "No telemetry, no data collection, no external connections"
+      - "Model weights are open-source, auditable, on your hardware"
+
+  - name: single-agent
+    duration_minutes: 15
+    description: "Process sensitive documents with local AI"
+    commands:
+      - "autosre claude"
+    talking_points:
+      - "Feed confidential documents to AI without data leaving the room"
+      - "Regulatory compliance: GDPR, HIPAA, SOX — data residency solved"
+      - "Show network monitor: zero outbound API calls"
+
+  - name: agent-swarm
+    duration_minutes: 15
+    description: "Multi-agent compliance review"
+    commands:
+      - "autosre claude --swarm"
+    talking_points:
+      - "Multiple agents review documents against different compliance frameworks"
+      - "Results stay on-premise, auditable, reproducible"
+
+  - name: showcase
+    duration_minutes: 10
+    description: "Compliance summary and Q&A"
+    talking_points:
+      - "Complete audit trail of all AI interactions"
+      - "Zero data exfiltration risk"
+      - "Compare: cloud AI compliance burden vs on-premise simplicity"

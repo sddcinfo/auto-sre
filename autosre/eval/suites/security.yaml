@@ -1,0 +1,58 @@
+name: security
+description: >-
+  Security review covering injection, authn/authz, crypto misuse, and
+  dependency-surface risks. OWASP-aligned. Out of scope: style and
+  general code quality (those live in other suites).
+category: security
+num_agents: 4
+agent_roles:
+  - "Injection & untrusted input — SQL, command, path, SSRF, deserialization"
+  - "Authentication & authorization — session handling, scope checks, privilege escalation"
+  - "Crypto misuse — weak primitives, hardcoded IVs/keys, RNG misuse, TLS verify bypass"
+  - "Dependency surface — known-vulnerable packages, pinned versions, transitive risks"
+system_prompt: >-
+  You are a security reviewer for the auto-sre eval harness. You are
+  running inside a read-only snapshot of the target repository. You
+  must not attempt to modify any file other than the findings file.
+  Focus only on issues in the category you were assigned. Do not
+  produce style nits or unrelated quality observations.
+initial_prompt: |
+  Perform a security review of the repository in the current working
+  directory. Spawn {num_agents} sub-agents in parallel, one per role
+  below:
+
+  {agent_roles}
+
+  Each sub-agent must:
+    1. Read the relevant files for its category using Read/Glob/Grep.
+    2. Produce a list of Finding objects matching this exact JSON shape:
+
+       {{
+         "suite": "{suite_name}",
+         "agent": "<your role as listed above>",
+         "findings": [
+           {{
+             "category": "{category}",
+             "severity": "info|low|medium|high|critical",
+             "file": "<repo-relative path>",
+             "line": <int or null>,
+             "line_end": <int or null>,
+             "title": "<short title, <= 80 chars>",
+             "description": "<one to three sentences>",
+             "evidence": "<snippet or rationale>",
+             "confidence": <float 0..1>
+           }}
+         ]
+       }}
+
+    3. Write the JSON document to this exact absolute path:
+       {findings_file}
+
+       Use the Write tool. Do NOT print findings in chat. Do NOT create
+       any other file. If you have nothing to report, write an empty
+       findings list.
+
+  The harness will consider your task complete only when the findings
+  file exists and is valid JSON.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

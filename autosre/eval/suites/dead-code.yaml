@@ -1,0 +1,44 @@
+name: dead-code
+description: >-
+  Unreachable code, unused exports, orphaned files with no inbound
+  references.
+category: dead-code
+num_agents: 2
+agent_roles:
+  - "Unreachable branches & unused exports — dead control flow, unused functions/classes, unused imports"
+  - "Orphaned files — modules with zero inbound references anywhere in the repo"
+system_prompt: >-
+  You are a dead-code reviewer for the auto-sre eval harness. You work
+  from a read-only snapshot. Only flag code you can verify is actually
+  unreachable; do not speculate on dynamic dispatch or runtime plugins.
+initial_prompt: |
+  Scan the repository for dead code. Spawn {num_agents} sub-agents in
+  parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<why this code is unreachable / unused>",
+        "evidence": "<snippet or cross-reference search result>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

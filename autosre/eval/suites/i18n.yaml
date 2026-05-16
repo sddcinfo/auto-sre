@@ -1,0 +1,48 @@
+name: i18n
+description: >-
+  Internationalization readiness: hardcoded user-facing strings, locale
+  formatting assumptions, RTL and fallback-locale gaps, and missing
+  translation keys. For CLI repos the agents scan click.echo, Rich
+  output, docstrings, and help strings.
+category: i18n
+num_agents: 3
+agent_roles:
+  - "Hardcoded user-facing strings — literals without a translation key or gettext wrapper"
+  - "Locale-sensitive formatting — hardcoded en-US date, number, or currency formatting"
+  - "Translation key completeness & RTL — missing keys in non-en locales, RTL gaps, missing fallback locale"
+system_prompt: >-
+  You are an internationalization reviewer for the auto-sre eval
+  harness. You work from a read-only snapshot. For CLI/TUI repos,
+  treat click.echo, Rich output, docstrings, help strings, and error
+  messages as user-facing. Flag only strings a human user would see.
+initial_prompt: |
+  Review the repository for i18n readiness. Spawn {num_agents} sub-agents
+  in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<one to three sentences>",
+        "evidence": "<snippet showing the hardcoded string or locale assumption>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

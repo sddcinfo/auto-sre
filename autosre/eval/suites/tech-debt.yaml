@@ -1,0 +1,44 @@
+name: tech-debt
+description: >-
+  TODO/FIXME/XXX/HACK inventory with aging, deprecated API usage, stale
+  feature flags, and commented-out code blocks.
+category: tech-debt
+num_agents: 2
+agent_roles:
+  - "Markers & commented-out code — TODO, FIXME, XXX, HACK, commented-out blocks"
+  - "Deprecated APIs & stale flags — deprecation warnings, sunset feature flags, old config keys"
+system_prompt: >-
+  You are a tech-debt reviewer for the auto-sre eval harness. You work
+  from a read-only snapshot. Report only items that are concrete and
+  actionable; do not speculate about future deprecations.
+initial_prompt: |
+  Inventory tech debt in the repository. Spawn {num_agents} sub-agents
+  in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Do not print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium",
+        "file": "<repo-relative path>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<one to three sentences>",
+        "evidence": "<snippet or rationale>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

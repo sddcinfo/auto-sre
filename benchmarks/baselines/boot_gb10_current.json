@@ -1,0 +1,20 @@
+{
+  "name": "gb10_current",
+  "timestamp": "20260416T030602",
+  "kind": "boot",
+  "result": {
+    "timestamp": "20260416T030602",
+    "total_seconds": 54.21007924300011,
+    "compose_up_seconds": 0.4482910633087158,
+    "preflight_seconds": 51.104698181152344,
+    "server_ready_seconds": 52.663748025894165,
+    "all_backends_healthy": true,
+    "service_final_state": "active",
+    "invocation_id": "549d18b4d02641b4924587b60f6be7b1",
+    "kind": "boot"
+  },
+  "tolerances": {
+    "total_warn_ratio": 1.3,
+    "total_fail_ratio": 2.0
+  }
+}

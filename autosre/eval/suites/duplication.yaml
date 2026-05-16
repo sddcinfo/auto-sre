@@ -1,0 +1,45 @@
+name: duplication
+description: >-
+  Copy-pasted and near-duplicate code blocks that could be consolidated.
+  Prefer a small number of high-quality findings over many near-misses.
+category: duplication
+num_agents: 2
+agent_roles:
+  - "Exact duplicates — identical or near-identical blocks in 2+ files"
+  - "Near-duplicates — similar logic that should be extracted into a shared helper"
+system_prompt: >-
+  You are a duplication reviewer for the auto-sre eval harness. You
+  work from a read-only snapshot. Only flag duplication that is
+  actionable (extractable into a helper, refactorable today), not
+  coincidental similarity.
+initial_prompt: |
+  Scan the repository for code duplication. Spawn {num_agents} sub-agents
+  in parallel:
+
+  {agent_roles}
+
+  Each sub-agent writes its findings as JSON to this exact absolute
+  path: {findings_file}
+
+  Use the Write tool. Never print findings in chat. JSON shape:
+
+  {{
+    "suite": "{suite_name}",
+    "agent": "<your role>",
+    "findings": [
+      {{
+        "category": "{category}",
+        "severity": "info|low|medium",
+        "file": "<primary file>",
+        "line": <int or null>,
+        "title": "<short title>",
+        "description": "<which files and line ranges are duplicated, and what the extracted helper would look like>",
+        "evidence": "<representative snippet>",
+        "confidence": <float 0..1>
+      }}
+    ]
+  }}
+
+  Empty findings list is valid.
+max_tokens_per_agent: 16000
+timeout_seconds: 1800

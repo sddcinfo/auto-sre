@@ -1,0 +1,34 @@
+name: tech-debt-audit
+description: "Agent swarm audits the codebase for stale references, hardcoded values, and inconsistencies"
+audience: engineering
+total_minutes: 20
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: audit
+    duration_minutes: 15
+    description: "4 parallel agents scan for different categories of tech debt"
+    commands:
+      - "autosre claude --swarm"
+    talking_points:
+      - "Agent 1: Scan for hardcoded ports, IPs, URLs, model names"
+      - "Agent 2: Find stale references to old models (nemotron, NVFP4, FP8)"
+      - "Agent 3: Check config consistency (recipes vs code vs docker-compose)"
+      - "Agent 4: Validate documentation matches actual behavior"
+      - "All agents work in parallel via vLLM continuous batching"
+    success_criteria:
+      - "Each agent produces a categorized findings report"
+      - "Hardcoded values identified with file:line references"
+
+  - name: review
+    duration_minutes: 5
+    description: "Review findings and prioritize fixes"
+    commands: []
+    talking_points:
+      - "Synthesize agent reports into a prioritized action list"
+      - "Demonstrate the power of parallel analysis on local hardware"
+      - "No data leaves the machine — full sovereignty"
+    success_criteria:
+      - "Actionable findings documented"

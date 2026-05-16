@@ -1,0 +1,64 @@
+name: deep-tech
+description: "Deep technical demonstration — GB10 architecture, INT4 quantization, agent swarm"
+audience: engineering
+total_minutes: 45
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: architecture
+    duration_minutes: 8
+    description: "Show GB10 architecture, vLLM configuration, and model optimization"
+    commands:
+      - "autosre status"
+      - "nvidia-smi"
+    talking_points:
+      - "GB10: SM121a Blackwell, 128GB unified memory"
+      - "INT4 AutoRound quantization: 2x faster than FP8 on SM121"
+      - "vllm/vllm-openai stock image with --load-format=fastsafetensors + --attention-backend=flashinfer"
+      - "40 tok/s single, 197 tok/s at 8x concurrent"
+    success_criteria:
+      - "All services healthy"
+      - "Zero swap usage"
+
+  - name: setup
+    duration_minutes: 7
+    description: "Launch coding agent (Qwen3.6-35B-FP8)"
+    commands:
+      - "autosre start"
+      - "autosre test"
+    talking_points:
+      - "35B parameter model, 3B active (MoE, INT4 AutoRound)"
+      - "Coexists with meeting-scribe services (54GB + 32GB = 86GB / 128GB)"
+      - "131K token context window with tool calling + reasoning"
+      - "fastsafetensors: model loads in 16 seconds"
+    success_criteria:
+      - "Model loaded and healthy on :8010"
+      - "Test prompt returns valid response"
+
+  - name: agent-swarm
+    duration_minutes: 20
+    description: "Agent swarm tackling a complex task on Qwen3.6-35B FP8"
+    commands:
+      - "autosre claude --swarm"
+    talking_points:
+      - "Multiple parallel agents via vLLM continuous batching"
+      - "35B model handles concurrent requests with prefix caching"
+      - "197 tok/s aggregate at 8x concurrent — near-linear scaling"
+      - "Each agent has web search + web fetch via local MCP servers"
+    success_criteria:
+      - "Agents active and making progress"
+      - "No OOM or swap under concurrent load"
+
+  - name: showcase
+    duration_minutes: 10
+    description: "Performance review, architecture deep-dive, Q&A"
+    commands: []
+    talking_points:
+      - "Review agent outputs and quality"
+      - "Architecture: MoE + native FP8 + stock vLLM with fastsafetensors/flashinfer"
+      - "Full isolation: local model, no cloud credentials"
+      - "Cost: single desk-side GB10 vs cloud GPU instances"
+    success_criteria:
+      - "Agents completed their analysis"

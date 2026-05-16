@@ -1,0 +1,420 @@
+# autosre guard rules
+# ===================
+# Guard rules for the autosre Bash hook. Default ruleset is tuned for
+# Python-services + bare-metal-provisioning monorepos: route quality
+# tooling through the project's CLI, keep git / venv / heredoc
+# backdoors blocked, nudge ad-hoc python -c code into reusable scripts
+# or repo subcommands. Override per-repo by writing your own rules to
+# ``$XDG_CONFIG_HOME/autosre/guard-rules.yaml``.
+#
+# Rules are evaluated in order; first match wins.
+#
+# Rule fields:
+#   id:             Unique identifier for the rule
+#   category:       Logical grouping (for reporting/filtering)
+#   pattern:        Regex pattern matched against the Bash command
+#   decision:       "deny" (block) | "ask" (require approval) | "allow" (skip)
+#   reason:         Human-readable explanation shown to Claude
+#   mapped_cmd:     (optional) Suggested replacement command
+#   search:         (optional) If true, use re.search instead of re.match
+#   extra_search:   (optional) Second regex that must also match (AND condition)
+#
+# Version: 2.0.0 — 2026-04-15 sddc CLI integration
+
+version: "2.0.0"
+
+settings:
+  approval_expiry_seconds: 60
+  # Optional: set to a branch name ("dev", "main", ...) to enforce that
+  # all git commands run on that branch. Left unset so autosre doesn't
+  # surprise users with branch enforcement.
+  # enforce_branch: "dev"
+  log_file: "~/.local/state/autosre/hook-blocked.log"
+  approvals_dir: "~/.local/state/autosre/approvals"
+
+fallback_commands:
+  - lint
+  - format
+  - typecheck
+  - test
+  - quality
+  - git
+  - gh
+  - monitor
+  - hooks
+  - review
+  - plan
+  - sddc
+  - website
+
+# Blocked environment variables (bypass attempts)
+blocked_env_vars:
+  - GUARD_OVERRIDE
+  - GUARD_SCRIPT_MODE
+  - SKIP_GUARD
+  - DISABLE_GUARD
+  - BYPASS_GUARD
+  - NO_GUARD
+  - GUARD_SKIP
+  - GUARD_DISABLE
+  - GUARD_BYPASS
+  - AUTOSRE_BYPASS_GUARD
+
+rules:
+  # ================================================================
+  # FORBIDDEN - Git operations
+  # ================================================================
+
+  - id: git-stash
+    category: forbidden
+    pattern: "^git\\s+stash\\b"
+    decision: deny
+    reason: "FORBIDDEN: git stash. Commit instead: git add -A && git commit -m 'WIP: ...'"
+
+  - id: git-reset-hard
+    category: forbidden
+    pattern: "^git\\s+reset\\s+--hard\\b"
+    decision: deny
+    reason: "FORBIDDEN: git reset --hard discards uncommitted changes IRREVERSIBLY. Commit first."
+
+  - id: git-reset-head
+    category: forbidden
+    pattern: "^git\\s+reset\\s+(HEAD|origin/)\\b"
+    decision: deny
+    reason: "FORBIDDEN: git reset HEAD unstages files — may discard other people's staged work. Use 'git add' to stage only your files instead."
+
+  - id: git-reset-soft-mixed
+    category: forbidden
+    pattern: "^git\\s+reset\\b"
+    decision: deny
+    reason: "FORBIDDEN: git reset can unstage or discard work. Stage your files with 'git add <file>' instead of unstaging others with reset."
+
+  - id: git-push-force
+    category: forbidden
+    pattern: "^git\\s+push\\b.*\\s(--force|-f)\\b"
+    decision: ask
+    reason: "DESTRUCTIVE: git push --force will overwrite remote history."
+
+  - id: commit-no-verify
+    category: ci-protection
+    pattern: '^git\s+(-C\s*\S+\s+)?commit\b'
+    extra_search: '--no-verify|\s-n\b'
+    decision: deny
+    reason: >-
+      FORBIDDEN: --no-verify bypasses pre-commit hooks (lint, typecheck,
+      secret scan, AI review). Fix the underlying issue instead of bypassing
+      the check.
+
+  - id: push-no-verify
+    category: ci-protection
+    pattern: '^git\s+(-C\s*\S+\s+)?push\b'
+    extra_search: '--no-verify'
+    decision: deny
+    reason: >-
+      FORBIDDEN: --no-verify bypasses pre-push hooks. Fix the underlying
+      issue instead of bypassing the check.
+
+  - id: git-checkout-protected
+    category: forbidden
+    pattern: "^git\\s+checkout\\s+(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: Stay on dev branch. Use a PR workflow to land changes on test/main."
+
+  - id: git-merge-origin-protected
+    category: forbidden
+    pattern: "^git\\s+merge\\s+origin/(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: merging origin/test or origin/main into dev defeats the PR workflow."
+
+  - id: git-merge-protected
+    category: forbidden
+    pattern: "^git\\s+merge\\s+(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: merging test/main into dev defeats the PR workflow."
+
+  - id: git-pull-protected
+    category: forbidden
+    pattern: "^git\\s+pull\\s+origin\\s+(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: pulling origin/test or origin/main into dev defeats the PR workflow."
+
+  - id: git-checkout-discard
+    category: forbidden
+    pattern: "^git\\s+checkout\\s+--\\b"
+    decision: deny
+    reason: "FORBIDDEN: git checkout -- discards working tree changes IRREVERSIBLY. Commit first: git add -A && git commit -m 'WIP: ...'"
+
+  - id: git-restore-discard
+    category: forbidden
+    pattern: "^git\\s+restore\\b"
+    decision: deny
+    reason: "FORBIDDEN: git restore discards working tree changes IRREVERSIBLY. Commit first: git add -A && git commit -m 'WIP: ...'"
+
+  - id: git-clean
+    category: forbidden
+    pattern: "^git\\s+clean\\b"
+    decision: deny
+    reason: "FORBIDDEN: git clean removes untracked files IRREVERSIBLY. Commit first: git add -A && git commit -m 'WIP: ...'"
+
+  - id: git-delete-protected-branch
+    category: forbidden
+    pattern: "^git\\s+branch\\s+(-d|-D|--delete)\\s+(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: Cannot delete protected branches test/main"
+
+  - id: git-push-origin-protected
+    category: git-push
+    pattern: "^git\\s+push\\s+origin\\s+(test|main)\\b"
+    decision: deny
+    reason: "FORBIDDEN: Cannot push directly to test/main. Use a PR workflow."
+
+  - id: timeout
+    category: forbidden
+    pattern: "^timeout\\b"
+    decision: deny
+    reason: "FORBIDDEN: timeout causes issues. Use Python asyncio.timeout()"
+
+  # ================================================================
+  # CI CONFIG PROTECTION
+  # ================================================================
+
+  - id: ci-disable-quality
+    category: ci-protection
+    pattern: "^(sed|awk)\\b"
+    extra_search: "(run_lint|run_typecheck).*false"
+    decision: deny
+    reason: >-
+      FORBIDDEN: Disabling CI quality checks (lint/typecheck) is not allowed.
+      These checks protect code quality and must remain enabled.
+
+  # ================================================================
+  # HEREDOC / FILE CREATION BACKDOORS
+  # ================================================================
+
+  - id: heredoc-file-creation
+    category: backdoor
+    pattern: "<<-?\\s*['\"]?\\w+['\"]?\\s*[|>]"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Heredoc file creation bypasses guards. Use Write tool, or create script in scripts/"
+
+  - id: multiline-echo-file
+    category: backdoor
+    pattern: "(printf|echo\\s+-e)\\s+['\"].*\\\\n.*['\"]\\s*>\\s*/"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Multi-line file creation via echo/printf bypasses guards. Use Write tool, or create script in scripts/"
+
+  # ================================================================
+  # PYTHON / VENV BACKDOORS
+  # Short `python -c` is allowed for ad-hoc probing (curl/wget also).
+  # Long or multi-statement `python -c` blobs are denied below — those
+  # are reusable code masquerading as one-liners and belong in
+  # scripts/<name>.py or a sddc subcommand.
+  # ================================================================
+
+  - id: venv-activate
+    category: python
+    pattern: "\\bsource\\s+[^\\s]*venv"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Direct venv activation bypasses guards. Uplift to a sddc subcommand, or create a script in scripts/"
+
+  - id: venv-dot-activate
+    category: python
+    pattern: "\\.\\s+[^\\s]*venv"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Direct venv activation bypasses guards. Uplift to a sddc subcommand, or create a script in scripts/"
+
+  - id: chained-python
+    category: python
+    pattern: "(source|export\\s+PYTHONPATH)[^;]*&&\\s*python"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Chained environment setup + Python bypasses guards. Uplift to a sddc subcommand, or create a script in scripts/"
+
+  - id: cd-python
+    category: python
+    pattern: "cd\\s+[^\\s;]+\\s*&&\\s*.*python"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: cd + python bypasses guards. Uplift to a sddc subcommand, or create a script in scripts/"
+
+  # Long/multi-statement `python -c` = reusable code. Uplift it.
+  # Matches any `python -c` blob that either (a) contains a semicolon
+  # (multi-statement) or (b) runs longer than ~200 chars.
+  - id: python-c-multistatement
+    category: python
+    pattern: "python3?\\s+-c\\s+['\"][^'\"]*;[^'\"]*['\"]"
+    search: true
+    decision: deny
+    reason: >-
+      FORBIDDEN: multi-statement `python -c` is ad-hoc code that will be
+      rewritten five minutes from now. Uplift to a reusable form:
+
+        • one-shot investigation → create scripts/<name>.py and run it
+        • recurring operation   → add a sddc subcommand in
+                                  sddc-cli/src/sddc/commands/
+
+      Short, single-statement `python -c` probes are still allowed.
+
+  - id: python-c-long
+    category: python
+    pattern: "python3?\\s+-c\\s+['\"][^'\"]{200,}['\"]"
+    search: true
+    decision: deny
+    reason: >-
+      FORBIDDEN: long `python -c` blob. Anything that doesn't fit on a
+      short line is reusable code. Uplift to scripts/<name>.py or a sddc
+      subcommand under sddc-cli/src/sddc/commands/.
+
+  # ================================================================
+  # VENV/BIN PATH BACKDOORS
+  # ================================================================
+
+  - id: venv-bin-direct
+    category: python
+    pattern: "(^|/|\\./)\\.\\.?venv/bin/"
+    search: true
+    decision: deny
+    reason: "FORBIDDEN: Direct .venv/bin/ path usage. Call command by name only."
+
+  # ================================================================
+  # CODE QUALITY TOOLS — route through sddc CLI
+  # ================================================================
+
+  - id: ruff-check
+    category: quality
+    pattern: "^ruff\\b"
+    decision: deny
+    reason: >-
+      Use sddc CLI for ruff.
+
+        sddc lint              # Run ruff check
+        sddc format            # Run ruff format
+    mapped_cmd: "sddc lint [path]"
+
+  - id: mypy
+    category: quality
+    pattern: "^mypy\\b"
+    decision: deny
+    reason: >-
+      Use sddc CLI for type checking.
+
+        sddc typecheck             # Type-check current project
+        sddc typecheck --strict    # Strict mode
+        sddc typecheck -p <pkg>    # Type-check an installed package
+    mapped_cmd: "sddc typecheck [path]"
+
+  - id: black
+    category: quality
+    pattern: "^black\\b"
+    decision: deny
+    reason: >-
+      Use sddc CLI for formatting (uses ruff).
+
+        sddc format            # Format current project
+    mapped_cmd: "sddc format [path]"
+
+  - id: pytest-direct
+    category: quality
+    pattern: "^pytest\\b"
+    decision: deny
+    reason: >-
+      Use sddc CLI for testing.
+
+        sddc test              # Run tests
+        sddc test -v           # Verbose
+        sddc test -k <pat>     # Filter by keyword
+        sddc test --cov        # With coverage
+    mapped_cmd: "sddc test [path]"
+
+  - id: bandit
+    category: quality
+    pattern: "^bandit\\b"
+    decision: deny
+    reason: "FORBIDDEN: bandit not configured for this repo. If you need a security audit, open an issue and we'll add a sddc subcommand."
+
+  - id: safety-pip-audit
+    category: quality
+    pattern: "^(safety|pip-audit)\\b"
+    decision: deny
+    reason: "FORBIDDEN: safety/pip-audit not configured for this repo. If you need a security audit, open an issue and we'll add a sddc subcommand."
+
+  # ================================================================
+  # DEPENDENCY MANAGEMENT
+  # This monorepo uses pyproject.toml as the source of truth. Adding a
+  # dependency = edit pyproject.toml + re-run `pip install -e '.[dev]'`
+  # inside the mise-managed venv. Direct pip install/uninstall is denied
+  # so deps don't drift from the manifest.
+  # ================================================================
+
+  - id: pip-install
+    category: deps
+    pattern: "^pip3?\\s+install\\b"
+    decision: deny
+    reason: >-
+      FORBIDDEN: Direct pip install drifts deps from pyproject.toml.
+
+        1. Edit pyproject.toml (add to dependencies or [project.optional-dependencies])
+        2. Run: pip install -e '.[dev]'   (inside the mise-managed venv)
+
+  - id: pip-uninstall
+    category: deps
+    pattern: "^pip3?\\s+uninstall\\b"
+    decision: deny
+    reason: "FORBIDDEN: Direct pip uninstall drifts deps from pyproject.toml. Remove from pyproject.toml and re-run pip install -e '.[dev]'"
+
+  - id: pip-freeze
+    category: deps
+    pattern: "^pip3?\\s+freeze\\b"
+    decision: deny
+    reason: "FORBIDDEN: pip freeze output is not a source of truth. pyproject.toml is. Read it directly."
+
+  - id: pip-list
+    category: deps
+    pattern: "^pip3?\\s+list\\b"
+    decision: allow
+    reason: ""
+
+  - id: uv-pip-install
+    category: deps
+    pattern: "^uv\\s+pip\\s+install\\b"
+    decision: deny
+    reason: "FORBIDDEN: uv pip install drifts deps from pyproject.toml. Edit pyproject.toml and run: pip install -e '.[dev]'"
+
+  - id: uv-sync
+    category: deps
+    pattern: "^uv\\s+sync\\b"
+    decision: deny
+    reason: "FORBIDDEN: this monorepo does not use uv lockfiles. Edit pyproject.toml and run: pip install -e '.[dev]'"
+
+  # ── recipe protection (perf gate, defense-in-depth) ──────────
+  - id: recipe-bash-sed-awk-perl-yq
+    category: perf-gate
+    pattern: "^(sed|awk|perl|yq)\\b"
+    extra_search: "(recipes|stage_configs)/\\S*\\.yaml"
+    decision: deny
+    reason: "FORBIDDEN: Do not use sed/awk/perl/yq to edit recipe/stage_config files. Use the Edit tool (which validates changes structurally) or ask the user to modify and run `autosre perf run`."
+
+  - id: recipe-bash-redirect
+    category: perf-gate
+    pattern: ">\\s*\\S*(recipes|stage_configs)/\\S*\\.yaml"
+    decision: deny
+    reason: "FORBIDDEN: Do not redirect output into recipe/stage_config YAML files."
+    search: true
+
+  - id: recipe-bash-cp-mv
+    category: perf-gate
+    pattern: "^(cp|mv|install|rsync)\\b"
+    extra_search: "(recipes|stage_configs)/\\S*\\.yaml"
+    decision: deny
+    reason: "FORBIDDEN: Do not overwrite recipe/stage_config files via cp/mv/rsync."
+
+  - id: recipe-bash-python-write
+    category: perf-gate
+    pattern: "^(python|python3|env\\s+python)"
+    extra_search: "(recipes|stage_configs)/\\S*\\.yaml"
+    decision: deny
+    reason: "FORBIDDEN: Do not use python to modify recipe/stage_config files."

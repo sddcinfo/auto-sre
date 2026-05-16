@@ -1,0 +1,48 @@
+name: coding-productivity
+description: "AI-assisted coding productivity — code review, generation, and refactoring"
+audience: engineering
+total_minutes: 45
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: setup
+    duration_minutes: 5
+    description: "Launch Qwen3.6 coding model"
+    commands:
+      - "autosre start"
+      - "autosre test"
+    talking_points:
+      - "Qwen3.6-35B-A3B: purpose-built for coding, 3B active params"
+      - "Tool calling + reasoning built-in"
+      - "14GB model — leaves plenty of room for long context"
+
+  - name: single-agent
+    duration_minutes: 10
+    description: "Single agent code review and refactoring"
+    commands:
+      - "autosre claude"
+    talking_points:
+      - "Full IDE-like experience: read files, write code, run tests"
+      - "Show: code review, bug fixing, test generation"
+
+  - name: agent-swarm
+    duration_minutes: 20
+    description: "4-agent code review swarm"
+    commands:
+      - "autosre swarm launch --agents 4 --template code-review"
+    talking_points:
+      - "Agent 1: Security review"
+      - "Agent 2: Performance analysis"
+      - "Agent 3: Code quality and style"
+      - "Agent 4: Documentation and test coverage"
+      - "All working in parallel on the same codebase"
+
+  - name: showcase
+    duration_minutes: 10
+    description: "Review findings from all agents"
+    commands: []
+    talking_points:
+      - "Compare findings across security, performance, quality, docs"
+      - "Time saved: 4 reviews in parallel vs sequential"

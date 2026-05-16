@@ -1,0 +1,46 @@
+name: agent-swarm-showcase
+description: "Maximum agent swarm concurrency — push the hardware to its limits"
+audience: any
+total_minutes: 45
+model: qwen3.6-fp8
+backend: vllm
+cluster_required: false
+
+phases:
+  - name: setup
+    duration_minutes: 5
+    description: "Launch coding agent (Qwen3.6-35B FP8)"
+    commands:
+      - "autosre start"
+    talking_points:
+      - "Qwen3.6-35B-FP8: 35B params, 3B active, 131K context"
+      - "TurboQuant KV cache compression for maximum concurrency"
+
+  - name: single-agent
+    duration_minutes: 5
+    description: "Baseline: single agent performance"
+    commands:
+      - "autosre claude"
+    talking_points:
+      - "Establish baseline: single agent tok/s and response quality"
+
+  - name: agent-swarm
+    duration_minutes: 25
+    description: "5-agent incident response simulation"
+    commands:
+      - "autosre swarm launch --agents 5 --template incident-response"
+    talking_points:
+      - "Agent 1: Incident Commander — coordinates the team"
+      - "Agent 2: Log Analyst — searches through system logs"
+      - "Agent 3: Metrics Analyst — examines monitoring dashboards"
+      - "Agent 4: Root Cause Analyst — traces the failure chain"
+      - "Agent 5: Remediation Engineer — prepares and validates fixes"
+      - "All 5 working simultaneously on the same incident"
+
+  - name: showcase
+    duration_minutes: 10
+    description: "Review incident response and agent collaboration"
+    talking_points:
+      - "Show how agents communicated and coordinated"
+      - "Total throughput: 4.7x agent parallelism (197 tok/s at 8x concurrent)"
+      - "Time to resolution: minutes vs hours for human team"

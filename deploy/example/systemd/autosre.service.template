@@ -1,0 +1,20 @@
+[Unit]
+Description=Auto-SRE full stack (meeting-scribe + coding agent + proxy)
+After=docker.service nvidia-persistenced.service
+Requires=docker.service
+Wants=nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=${SERVICE_USER}
+WorkingDirectory=${REPO_DIR}
+Environment=PATH=${PYTHON_BIN_DIR}:${NODE_BIN_DIR}:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOME=${SERVICE_HOME}
+ExecStart=${PYTHON_BIN_DIR}/autosre start
+ExecStop=${PYTHON_BIN_DIR}/autosre stop
+TimeoutStartSec=600
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

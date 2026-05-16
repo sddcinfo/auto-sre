@@ -1,0 +1,75 @@
+# Qwen3.6-35B-A3B-FP8 — production canonical recipe for autosre vLLM.
+#
+# Native Qwen-published FP8 checkpoint (no calibration needed). The 35B
+# weights + KV cache use ~77 GB of the GB10's 128 GB unified memory at
+# gpu_memory_utilization=0.70, leaving headroom for meeting-scribe's
+# diarize/asr/tts containers to run alongside.
+#
+# This is the only vLLM recipe shipped with autosre. Customers on
+# bleeding-edge can override the image at start time:
+#   autosre start --docker-image vllm/vllm-openai:nightly
+#
+# vLLM ≥ 0.19.1rc1.dev337+g17d87168d (2026-04-16) is required for stable
+# Qwen3.6-FP8 + GB10 SM121; see NVIDIA developer forum thread 366822 for
+# the kernel-stability watermark. ``vllm/vllm-openai:latest`` has tracked
+# above that since the 2026-04-25 release.
+
+model_key: qwen3.6-fp8
+model_id: Qwen/Qwen3.6-35B-A3B-FP8
+short_name: Qwen3.6-35B-FP8
+description: "Qwen3.6 native FP8 (production)"
+
+docker_image: "vllm/vllm-openai:latest"
+
+mode: solo
+tensor_parallel: 1
+max_model_len: 262144
+gpu_memory_utilization: 0.70
+
+max_num_seqs: 8
+max_num_batched_tokens: 4096
+
+kv_cache_dtype: auto
+quantization: fp8
+
+# attention_backend: flashinfer is REQUIRED on GB10 SM121 + FP8 per
+# NVIDIA forum thread 366822. The 2026-04-30 cross-machine perf audit
+# found it MISSING from this recipe — local autosre had been running
+# with it via a stale process from before this recipe was cleaned up,
+# but the customer GB10 (started fresh against the recipe-as-written)
+# was running 8 GB heavier in VRAM and ~20% slower on translate p50/p95.
+attention_backend: flashinfer
+
+# No chat_template override — Qwen3.6's tokenizer ships with the right
+# Qwen-style template (tool-call + reasoning markers compatible with
+# the qwen3_coder tool-call parser and qwen3 reasoning parser below).
+
+extra_args:
+  - "--enable-auto-tool-choice"
+  - "--tool-call-parser=qwen3_coder"
+  - "--reasoning-parser=qwen3"
+  - "--enable-prefix-caching"
+  - "--enable-chunked-prefill"
+  - "--load-format=fastsafetensors"
+  - "--scheduling-policy=priority"
+
+# Production hardening env vars — REQUIRED on GB10 SM121 + FP8 per the
+# 2026-04-18/19 cuBLAS_STATUS_INTERNAL_ERROR investigation
+# (reports/reliability/cublas_crash_2026-04-18.md). Without these the
+# MoE router gate hits internal cuBLAS errors under concurrent prefill.
+# 2026-04-30 audit found the customer GB10 missing both vars — same
+# fragility window the live cudaErrorNotPermitted cascade exposed.
+env:
+  VLLM_ALLOW_LONG_MAX_MODEL_LEN: "1"
+  CUBLAS_WORKSPACE_CONFIG: ":4096:8"
+  VLLM_MARLIN_USE_ATOMIC_ADD: "1"
+
+capabilities:
+  tool_calling: true
+  reasoning: true
+  multimodal: false
+  max_context: 262144
+  active_params: "3B"
+  total_params: "35B"
+
+best_for: "Qwen3.6 native FP8 — production translation + coding agent"

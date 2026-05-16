@@ -1,0 +1,27 @@
+# Example autosre dropbox config.
+#
+# Copy to ~/.config/autosre/dropbox.toml and adjust paths/ports to suit
+# your environment, then run:
+#
+#   autosre dropbox install --config-file ~/.config/autosre/dropbox.toml
+#   autosre dropbox init    --config-file ~/.config/autosre/dropbox.toml --password-stdin
+#   autosre dropbox start
+#
+# All fields are optional. Any field omitted here falls back to the
+# built-in default; any field set in AUTOSRE_DROPBOX_* env vars at
+# service-start time overrides this file.
+
+[dropbox]
+# Root directory for all mutable dropbox state. Subdirs (files, config,
+# tls, state) are derived from this unless overridden individually below.
+data_dir = "/data/dropbox"
+
+# Network surface.
+listen_port = 8443        # public TLS + HTTP-redirect port
+upstream_port = 18443     # filebrowser (127.0.0.1, not exposed)
+
+# Authenticated session cookie lifetime (7 days = 604800 seconds).
+cookie_ttl_seconds = 604800
+
+# Override if filebrowser is installed at a non-PATH location.
+# filebrowser_bin = "/usr/local/bin/filebrowser"
